@@ -30,18 +30,24 @@ export function useStoreMap<State, Result, Keys extends ReadonlyArray<any>>({
   store,
   keys,
   fn,
+  equal = (prev, next) => prev === next,
 }: {
   store: Store<State>
   keys: Keys
   fn(state: State, keys: Keys): Result
+  equal?(prev: Result, next: Result): boolean
 }): Result {
   if (!is.store(store)) throwError('useStoreMap expects a store')
   if (!Array.isArray(keys)) throwError('useStoreMap expects an array as keys')
   if (typeof fn !== 'function') throwError('useStoreMap expects a function')
   const result: Store<Result> = useMemo(
-    () =>
-      createStore(fn(store.getState(), keys)).on(store, (_, state) =>
-        fn(state, keys),
+    () => createStore(fn(store.getState(), keys)).on(
+        store,
+        (prevResult, nextState) => {
+          const nextResult = fn(nextState, keys)
+
+          return equal(prevResult, nextResult) ? prevResult : nextResult
+        },
       ),
     keys,
   )
